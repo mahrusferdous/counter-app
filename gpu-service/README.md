@@ -3,6 +3,7 @@
 To check if a GPU is available on your system, you can use the following command:
 
 ```bash
+.\env\Scripts\Activate # Activate your virtual environment
 uvicorn gpu_service:app --host 0.0.0.0 --port 8000 --reload
 ```
 
