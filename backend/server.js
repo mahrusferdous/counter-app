@@ -1,23 +1,37 @@
 const Fastify = require("fastify");
-const axios = require("axios");
+const fastifyCors = require("@fastify/cors");
+const { Server } = require("socket.io");
+const http = require("http");
+
+const clickRoutes = require("./routes/clickRoutes");
+const { incrementClick } = require("./controllers/clickController");
+
 const fastify = Fastify();
+fastify.register(fastifyCors, { origin: "*" });
+fastify.register(clickRoutes);
 
-// FastAPI GPU service endpoint
-const GPU_SERVICE_URL = "http://localhost:8000/run-compute";
+const server = http.createServer(fastify.server);
 
-fastify.get("/run-compute", async (request, reply) => {
-	try {
-		const response = await axios.get(GPU_SERVICE_URL);
-		reply.send(response.data);
-	} catch (error) {
-		reply.status(500).send({ error: "Failed to connect to GPU service" });
-	}
+const io = new Server(server, { cors: { origin: "*" } });
+
+io.on("connection", (socket) => {
+	console.log("🔌 User connected");
+
+	socket.on("incrementClick", async (uid) => {
+		try {
+			const newCount = await incrementClick(uid);
+			socket.emit("clickUpdate", { uid, count: newCount });
+		} catch (err) {
+			console.error(err);
+		}
+	});
+
+	socket.on("disconnect", () => {
+		console.log("❌ User disconnected");
+	});
 });
 
-fastify.listen(3000, (err, address) => {
-	if (err) {
-		console.log(err);
-		process.exit(1);
-	}
-	console.log(`Server listening at ${address}`);
+server.listen(3001, (err) => {
+	if (err) throw err;
+	console.log("🚀 Backend running on http://localhost:3001");
 });
