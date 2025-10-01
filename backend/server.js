@@ -4,7 +4,7 @@ const { Server } = require("socket.io");
 const http = require("http");
 
 const clickRoutes = require("./routes/clickRoutes");
-const { incrementClick } = require("./controllers/clickController");
+const { incrementClick, resetClick } = require("./controllers/clickController");
 
 const fastify = Fastify();
 fastify.register(fastifyCors, { origin: "*" });
@@ -20,9 +20,20 @@ io.on("connection", (socket) => {
 	socket.on("incrementClick", async (uid) => {
 		try {
 			const newCount = await incrementClick(uid);
-			socket.emit("clickUpdate", { uid, count: newCount });
+			// Broadcast to all clients so UIs stay in sync
+			io.emit("clickUpdate", { uid, count: newCount });
 		} catch (err) {
-			console.error(err);
+			console.error("incrementClick error:", err);
+		}
+	});
+
+	socket.on("resetClick", async (uid) => {
+		try {
+			const resetCount = await resetClick(uid);
+			// Broadcast reset to all clients
+			io.emit("clickUpdate", { uid, count: resetCount });
+		} catch (err) {
+			console.error("resetClick error:", err);
 		}
 	});
 

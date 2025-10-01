@@ -11,7 +11,6 @@ import {
 import io from "socket.io-client";
 import "./App.css";
 
-// Firebase config
 const firebaseConfig = {
 	apiKey: "AIzaSyCAR03Ue3cEdZ16SN4xkKUyC_p1yCBJFwQ",
 	authDomain: "counter-app-counter.firebaseapp.com",
@@ -22,12 +21,11 @@ const firebaseConfig = {
 	measurementId: "G-HNQCEEBPS1",
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
-// WebSocket connection
+// connect once
 const socket = io("http://localhost:3001");
 
 function App() {
@@ -37,64 +35,75 @@ function App() {
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState(null);
 
-	// Listen for auth state changes
 	useEffect(() => {
 		const unsubscribe = onAuthStateChanged(auth, setUser);
 		return () => unsubscribe();
 	}, []);
 
-	// Listen for click updates
+	// listen for broadcasted updates (increment or reset)
 	useEffect(() => {
-		socket.on("clickUpdate", (data) => {
+		const handler = (data) => {
 			if (data.uid === user?.uid) {
 				setClickCount(data.count);
 			}
-		});
-
+		};
+		socket.on("clickUpdate", handler);
 		return () => {
-			socket.off("clickUpdate");
+			socket.off("clickUpdate", handler);
 		};
 	}, [user]);
 
-	// Google Sign-In
 	const googleSignIn = async () => {
 		try {
-			const result = await signInWithPopup(auth, googleProvider);
+			await signInWithPopup(auth, googleProvider);
 			setError(null);
-		} catch (error) {
-			setError(error.message);
+		} catch (err) {
+			setError(err.message);
 		}
 	};
 
-	// Email/Password login
 	const login = async () => {
 		try {
 			await signInWithEmailAndPassword(auth, email, password);
 			setError(null);
-		} catch (error) {
-			setError(error.message);
+		} catch (err) {
+			setError(err.message);
 		}
 	};
 
-	// Handle button click
 	const handleClick = () => {
-		if (!user || !user.uid) {
+		if (!user?.uid) {
 			alert("Please log in first.");
-			console.error("User or UID is missing", user);
 			return;
 		}
 		socket.emit("incrementClick", user.uid);
 	};
 
-	// Fetch click count
+	const handleReset = () => {
+		if (!user?.uid) {
+			alert("Please log in first.");
+			return;
+		}
+		if (!window.confirm("Are you sure you want to reset your count to 0?")) return;
+		// Emit reset via websocket — server will broadcast the result
+		socket.emit("resetClick", user.uid);
+	};
+
 	useEffect(() => {
 		if (user && user.uid) {
-			fetch(`http://localhost:3001/getClickCount/${user.uid}`)
-				.then((res) => res.json())
-				.then((data) => {
+			const fetchClickCount = async () => {
+				try {
+					const res = await fetch(`http://localhost:3001/getClickCount/${user.uid}`);
+					const data = await res.json();
 					setClickCount(data.count);
-				})
-				.catch((error) => console.error("Error fetching click count:", error));
+				} catch (error) {
+					console.error("Error fetching click count:", error);
+				}
+			};
+
+			fetchClickCount();
+		} else {
+			setClickCount(0); // clear count when no user
 		}
 	}, [user]);
 
@@ -121,7 +130,12 @@ function App() {
 					<h2>Welcome, {user.email}</h2>
 					<p>Click count: {clickCount}</p>
 					<button onClick={handleClick}>Click me!</button>
-					<button onClick={() => signOut(auth)}>Sign Out</button>
+					<button onClick={handleReset} style={{ marginLeft: "10px", background: "orange" }}>
+						Reset Count
+					</button>
+					<button onClick={() => signOut(auth)} style={{ marginLeft: "10px" }}>
+						Sign Out
+					</button>
 				</div>
 			)}
 		</div>

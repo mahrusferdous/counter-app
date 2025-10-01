@@ -21,7 +21,7 @@ const pool = new Pool({
 const incrementCounter = async (uid) => {
 	const res = await pool.query(
 		`INSERT INTO user_counters (uid, count)
-     VALUES ($1, 1)
+       VALUES ($1, 1)
      ON CONFLICT (uid)
      DO UPDATE SET count = user_counters.count + 1
      RETURNING count;`,
@@ -35,4 +35,16 @@ const getCounter = async (uid) => {
 	return res.rows.length ? res.rows[0].count : 0;
 };
 
-module.exports = { incrementCounter, getCounter };
+const resetCounter = async (uid) => {
+	// Ensure row exists and set count = 0
+	const res = await pool.query(
+		`INSERT INTO user_counters (uid, count)
+       VALUES ($1, 0)
+     ON CONFLICT (uid) DO UPDATE SET count = 0
+     RETURNING count;`,
+		[uid]
+	);
+	return res.rows[0].count;
+};
+
+module.exports = { incrementCounter, getCounter, resetCounter };

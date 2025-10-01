@@ -27,3 +27,11 @@ CREATE TABLE IF NOT EXISTS user_counters (
   count INTEGER DEFAULT 0
 );
 ```
+
+# Run the backend server
+
+```bash
+nodemon server.js
+```
+
+# Backend API Endpoints
