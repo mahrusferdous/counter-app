@@ -33,5 +33,3 @@ CREATE TABLE IF NOT EXISTS user_counters (
 ```bash
 nodemon server.js
 ```
-
-# Backend API Endpoints
